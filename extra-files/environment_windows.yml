@@ -1,21 +1,52 @@
 name: cvapps
 channels:
-  - defaults
   - conda-forge
+  - defaults
 dependencies:
+  # Python Version
   - python=3.9
+
+  # Computer Vision & Media
+  - opencv=4.5.2
+  - ffmpeg=4.3.1
+  - x264
+
+  # Scientific Computing (Moved matplotlib/h5py here for Windows safety)
   - numpy=1.21.0
   - scipy=1.6.2
-  - opencv=4.5.2
   - matplotlib=3.4.2
   - h5py=3.3.0
-  - pillow=8.3.1
-  - ipython
-  - ffmpeg
+  - pandas
+
+  # Jupyter & Interactive Environment
+  - jupyter
+  - notebook=6.4.0
+  - ipykernel
+  - ipywidgets
+  - qtconsole
+  - nbconvert
+
+  # GUI & Qt
+  - pyqt=5.12
+  - qt=5.12
+
+  # Development Tools
+  - tox
+  - virtualenv
+  - pylint
+  - astroid
+  - isort
+
+  # Utilities
+  - six
+  - tornado
+  - pyzmq
   - pip
+
   - pip:
-    - ipdb
-    - pylint
-    - astroid
-    - isort
-    - toml
+    # Packages specific to pip or not easily found on conda
+    - lazy-object-proxy
+    - wrapt
+    - mccabe
+    - cycler
+    - kiwisolver
