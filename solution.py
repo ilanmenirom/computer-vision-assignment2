@@ -155,13 +155,58 @@ class Solution:
         l = np.zeros_like(ssdd_tensor)
         """INSERT YOUR CODE HERE"""
 
-        num_of_rows = ssdd_tensor.shape[0]
-        for row in range(num_of_rows):
-            hor_slice = ssdd_tensor[row, :, :].transpose()
-            l[row, :, :] = self.dp_grade_slice(hor_slice, p1, p2).transpose()
-            # print('row:', row, 'of:', num_of_rows)
+        num_rows, num_cols, num_disparities = ssdd_tensor.shape
+        final_labels = np.zeros((num_rows, num_cols), dtype=int)
+        for row in range(num_rows):
+            row_slice = ssdd_tensor[row, :, :].transpose()
+            accumulated_cost_slice = self.dp_grade_slice(row_slice, p1, p2)
+            final_labels[row, :] = self._backtrack_slice(accumulated_cost_slice, p1, p2)
 
-        return self.naive_labeling(l)
+        return final_labels
+
+    @staticmethod
+    def _backtrack_slice(accumulated_cost: np.ndarray, p1: float, p2: float) -> np.ndarray:
+        """
+        Performs the backward pass (backtracking) to find the optimal path.
+
+        Args:
+            accumulated_cost: The cost matrix (D x W) computed by the forward pass.
+                              D = number of disparities, W = width of image.
+            p1: Penalty for disparity jump of 1.
+            p2: Penalty for disparity jump > 1.
+
+        Returns:
+            A 1D array of size W containing the optimal labels (indices) for this row.
+        """
+        num_labels, num_cols = accumulated_cost.shape
+        labels = np.zeros(num_cols, dtype=int)
+
+        # 1. Start from the last column: simply pick the global minimum
+        # This determines the anchor point for the backward path.
+        labels[-1] = np.argmin(accumulated_cost[:, -1])
+
+        # 2. Backtrack from W-2 down to 0
+        for col in range(num_cols - 2, -1, -1):
+            next_label = labels[col + 1]  # The label we chose for the pixel to the right
+            transition_costs = np.full(num_labels, p2)
+
+            # Zero cost if we stay the same
+            transition_costs[next_label] = 0.0
+
+            # p1 cost if we move by 1
+            if next_label > 0:
+                transition_costs[next_label - 1] = p1
+            if next_label < num_labels - 1:
+                transition_costs[next_label + 1] = p1
+
+            # Total cost = Cost at this node + Cost to transition to the next node
+            total_cost_at_step = accumulated_cost[:, col] + transition_costs
+
+            # Choose the disparity that minimizes this combined cost
+            labels[col] = np.argmin(total_cost_at_step)
+
+        return labels
+
     def dp_labeling_per_direction(self,
                                   ssdd_tensor: np.ndarray,
                                   p1: float,
