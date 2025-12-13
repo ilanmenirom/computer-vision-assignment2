@@ -348,6 +348,9 @@ class Solution:
             # side of the matrix when offset < 0:
             starting_linear_ind = offset if offset >=0 else -offset * num_cols
             linear_inds = np.arange(starting_linear_ind, mat_numel, jump_size)
+            if offset >= 0 and len(linear_inds) > num_cols - offset:
+                # Cut indices, because they exceed the right side of the matrix:
+                linear_inds = linear_inds[:num_cols - offset]
             # convert to 2d indices and reconstruct in the original dimensions:
             r_inds, c_inds = np.unravel_index(linear_inds, (num_rows, num_cols))
             res[r_inds, c_inds] = diag_mat[offset_ind, :len(linear_inds)]
