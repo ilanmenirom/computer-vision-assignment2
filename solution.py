@@ -343,15 +343,21 @@ class Solution:
         res = np.full([num_rows, num_cols], np.nan)
         jump_size = num_cols + 1  # to advance in row and column through linear indexing
         mat_numel = num_rows * num_cols
+
         for offset_ind, offset in enumerate(offsets_arr):
             # The first elements in the diagonal is on upper side of the matrix when offset>=0, and on the left
             # side of the matrix when offset < 0:
-            starting_linear_ind = offset if offset >=0 else -offset * num_cols
+            starting_linear_ind = offset if offset >= 0 else -offset * num_cols
+
+            if offset >= 0:
+                num_pixels = min(num_rows, num_cols - offset)
+            else:
+                num_pixels = min(num_rows + offset, num_cols)
+
             linear_inds = np.arange(starting_linear_ind, mat_numel, jump_size)
-            if offset >= 0 and len(linear_inds) > num_cols - offset:
-                # Cut indices, because they exceed the right side of the matrix:
-                linear_inds = linear_inds[:num_cols - offset]
-            # convert to 2d indices and reconstruct in the original dimensions:
+
+            linear_inds = linear_inds[:num_pixels]
+
             r_inds, c_inds = np.unravel_index(linear_inds, (num_rows, num_cols))
             res[r_inds, c_inds] = diag_mat[offset_ind, :len(linear_inds)]
 
