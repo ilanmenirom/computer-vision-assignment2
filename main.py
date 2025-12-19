@@ -119,9 +119,9 @@ def main():
 
     # Generate a dictionary which maps each direction to a label map:
     tt = tic()
-    direction_to_vote = solution.dp_labeling_per_direction(ssdd, COST1, COST2)
-    # with open('direction_to_vote.pkl', 'rb') as file:
-    #     direction_to_vote = pickle.load(file)
+    # direction_to_vote = solution.dp_labeling_per_direction(ssdd, COST1, COST2)
+    with open('direction_to_vote.pkl', 'rb') as file:
+        direction_to_vote = pickle.load(file)
 
     print(f"Dynamic programming in all directions done in {toc(tt):.4f}"
           f"[seconds]")
@@ -143,8 +143,11 @@ def main():
 
     # Smooth disparity image - Semi-Global Mapping
     tt = tic()
-    label_smooth_sgm = solution.sgm_labeling(ssdd, COST1, COST2)
+    # label_smooth_sgm = solution.sgm_labeling(ssdd, COST1, COST2)
     print(f"SGM done in {toc(tt):.4f}[seconds]")
+
+    with open('label_smooth_sgm.pkl', 'rb') as file:
+        label_smooth_sgm = pickle.load(file)
 
     # Plot Semi-Global Mapping result:
     plt.figure()
@@ -165,6 +168,18 @@ def main():
     plt.subplot(1, 3, 2)
     plt.imshow(mapped_image_smooth_sgm)
     plt.title('Smooth Forward map - SGM')
+    plt.subplot(1, 3, 3)
+    plt.imshow(right_image)
+    plt.title('Right Image')
+
+    # TODO: remove these lines:
+    plt.figure()
+    plt.subplot(1, 3, 1)
+    plt.imshow(mapped_image_smooth_sgm)
+    plt.title('Smooth Forward map - SGM')
+    plt.subplot(1, 3, 2)
+    plt.imshow(np.sum(np.abs(mapped_image_smooth_sgm - right_image), axis=2))
+    plt.title('Forward Map distance from Right Image')
     plt.subplot(1, 3, 3)
     plt.imshow(right_image)
     plt.title('Right Image')

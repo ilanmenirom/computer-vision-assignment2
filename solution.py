@@ -324,6 +324,47 @@ class Solution:
         num_of_directions = 8
         l = np.zeros_like(ssdd_tensor)
         """INSERT YOUR CODE HERE"""
+        num_rows, num_cols, num_disparities = ssdd_tensor.shape
+        direction_to_score = {}
+
+        # Horizontally:
+        _, direction_to_score[1] = self._dp_labeling_partial_rows(ssdd_tensor, p1, p2)
+        _, direction_to_score[5] = self._dp_labeling_partial_rows_opposite(ssdd_tensor, p1, p2)
+
+        # Vertically:
+        # rotate to apply DP on columns:
+        ssdd_tensor_rotated = np.rot90(ssdd_tensor)
+        _, vertical_labels_3 = self._dp_labeling_partial_rows(ssdd_tensor_rotated, p1, p2)
+        _, vertical_labels_7 = self._dp_labeling_partial_rows_opposite(ssdd_tensor_rotated, p1, p2)
+        # rotate back to original dimensions
+        direction_to_score[3] = np.rot90(vertical_labels_3, 3)
+        direction_to_score[7] = np.rot90(vertical_labels_7, 3)
+
+        # Diagonals 2 and 6:
+        ssdd_tensor_diag2 = self.manipulate_ssdd_diagonally(ssdd_tensor)
+        _, diag2_labels = self._dp_labeling_partial_rows(ssdd_tensor_diag2, p1, p2)
+        _, diag6_labels = self._dp_labeling_partial_rows_opposite(ssdd_tensor_diag2, p1, p2)
+        direction_to_score[2] = np.zeros((num_rows, num_cols, num_disparities), dtype=int)
+        direction_to_score[6] = np.zeros((num_rows, num_cols, num_disparities), dtype=int)
+        for sisparity_ind in range(num_disparities):
+            direction_to_score[2][:, :, sisparity_ind] = self.inverse_diagonal(diag2_labels[:, :, sisparity_ind], num_rows, num_cols)
+            direction_to_score[6][:, :, sisparity_ind] = self.inverse_diagonal(diag6_labels[:, :, sisparity_ind], num_rows, num_cols)
+
+        # Diagonals 4 and 8:
+        # flip SSD tensor, to achieve diagonals from other side
+        ssdd_tensor_diag4 = self.manipulate_ssdd_diagonally(ssdd_tensor[:, ::-1, :])
+        _, diag4_labels = self._dp_labeling_partial_rows(ssdd_tensor_diag4, p1, p2)
+        _, diag8_labels = self._dp_labeling_partial_rows_opposite(ssdd_tensor_diag4, p1, p2)
+        # flip back to adapt to the original image indices
+        direction_to_score[4] = np.zeros((num_rows, num_cols, num_disparities), dtype=int)
+        direction_to_score[8] = np.zeros((num_rows, num_cols, num_disparities), dtype=int)
+        for sisparity_ind in range(num_disparities):
+            direction_to_score[4][:, :, sisparity_ind] = self.inverse_diagonal(diag4_labels[:, :, sisparity_ind], num_rows, num_cols)[:, ::-1]
+            direction_to_score[8][:, :, sisparity_ind] = self.inverse_diagonal(diag8_labels[:, :, sisparity_ind], num_rows, num_cols)[:, ::-1]
+
+        for score in direction_to_score.values():
+            l += score
+
         return self.naive_labeling(l)
 
     @staticmethod
