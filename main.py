@@ -250,6 +250,9 @@ def main():
     plt.imshow(your_right_image)
     plt.title('Your Right Image')
 
+    plt.show()
+    pass
+
 
 if __name__ == "__main__":
     main()
