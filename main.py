@@ -58,19 +58,11 @@ def main():
     solution = Solution()
     # Compute Sum-Square-Diff distance
     tt = tic()
-    # ssdd = solution.ssd_distance(left_image.astype(np.float64),
-    #                              right_image.astype(np.float64),
-    #                              win_size=WIN_SIZE,
-    #                              dsp_range=DISPARITY_RANGE)
-    # print(f"SSDD calculation done in {toc(tt):.4f}[seconds]")
-
-    # TODO: remove this lines, and uncomment lines above:
-    import pickle
-
-    with open("ssdd.pkl", "rb") as f:
-        ssdd = pickle.load(f)
-
-    print(ssdd)
+    ssdd = solution.ssd_distance(left_image.astype(np.float64),
+                                 right_image.astype(np.float64),
+                                 win_size=WIN_SIZE,
+                                 dsp_range=DISPARITY_RANGE)
+    print(f"SSDD calculation done in {toc(tt):.4f}[seconds]")
 
     # Construct naive disparity image
     tt = tic()
@@ -88,9 +80,7 @@ def main():
 
     # Smooth disparity image - Dynamic Programming
     tt = tic()
-    # label_smooth_dp = solution.dp_labeling(ssdd, COST1, COST2)
-    with open('label_smooth_dp.pkl', 'rb') as file:
-        label_smooth_dp = pickle.load(file)
+    label_smooth_dp = solution.dp_labeling(ssdd, COST1, COST2)
     print(f"Dynamic Programming done in {toc(tt):.4f}[seconds]")
 
     # plot the left image and the estimated depth
@@ -119,10 +109,7 @@ def main():
 
     # Generate a dictionary which maps each direction to a label map:
     tt = tic()
-    # direction_to_vote = solution.dp_labeling_per_direction(ssdd, COST1, COST2)
-    with open('direction_to_vote.pkl', 'rb') as file:
-        direction_to_vote = pickle.load(file)
-
+    direction_to_vote = solution.dp_labeling_per_direction(ssdd, COST1, COST2)
     print(f"Dynamic programming in all directions done in {toc(tt):.4f}"
           f"[seconds]")
 
@@ -140,14 +127,10 @@ def main():
             plt.imshow(direction_to_vote[i - 1])
             plt.title(f'Direction {i - 1}')
 
-
     # Smooth disparity image - Semi-Global Mapping
     tt = tic()
-    # label_smooth_sgm = solution.sgm_labeling(ssdd, COST1, COST2)
+    label_smooth_sgm = solution.sgm_labeling(ssdd, COST1, COST2)
     print(f"SGM done in {toc(tt):.4f}[seconds]")
-
-    with open('label_smooth_sgm.pkl', 'rb') as file:
-        label_smooth_sgm = pickle.load(file)
 
     # Plot Semi-Global Mapping result:
     plt.figure()
@@ -168,18 +151,6 @@ def main():
     plt.subplot(1, 3, 2)
     plt.imshow(mapped_image_smooth_sgm)
     plt.title('Smooth Forward map - SGM')
-    plt.subplot(1, 3, 3)
-    plt.imshow(right_image)
-    plt.title('Right Image')
-
-    # TODO: remove these lines:
-    plt.figure()
-    plt.subplot(1, 3, 1)
-    plt.imshow(mapped_image_smooth_sgm)
-    plt.title('Smooth Forward map - SGM')
-    plt.subplot(1, 3, 2)
-    plt.imshow(np.sum(np.abs(mapped_image_smooth_sgm - right_image), axis=2))
-    plt.title('Forward Map distance from Right Image')
     plt.subplot(1, 3, 3)
     plt.imshow(right_image)
     plt.title('Right Image')
@@ -222,7 +193,6 @@ def main():
             plt.imshow(your_direction_to_vote[i - 1])
             plt.title(f'Direction {i - 1}')
 
-
     # Smooth disparity image - Semi-Global Mapping
     tt = tic()
     your_label_smooth_sgm = solution.sgm_labeling(your_ssdd, COST1, COST2)
@@ -251,7 +221,6 @@ def main():
     plt.title('Your Right Image')
 
     plt.show()
-    pass
 
 
 if __name__ == "__main__":
