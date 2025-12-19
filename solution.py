@@ -155,17 +155,41 @@ class Solution:
         l = np.zeros_like(ssdd_tensor)
         """INSERT YOUR CODE HERE"""
 
+        num_of_rows = ssdd_tensor.shape[0]
+        for row in range(num_of_rows):
+            hor_slice = ssdd_tensor[row, :, :].transpose()
+            l[row, :, :] = self.dp_grade_slice(hor_slice, p1, p2).transpose()
+            # print('row:', row, 'of:', num_of_rows)
+
+        return self.naive_labeling(l)
+
+
+    def _dp_labeling_partial_rows(self,
+                                  ssdd_tensor: np.ndarray,
+                                  p1: float,
+                                  p2: float) -> tuple[np.ndarray, np.ndarray]:
         num_rows, num_cols, num_disparities = ssdd_tensor.shape
         # mark -1 as irrelevant, to handle manipulations from diagonal paths:
         final_labels = np.full((num_rows, num_cols), -1, dtype=int)
+        final_grades = np.full((num_rows, num_cols, num_disparities), -1, dtype=int)
+
         for row in range(num_rows):
             ssdd_row = ssdd_tensor[row, :, :]
             relevant_cols = np.where(~np.isnan(ssdd_row[:,0]))[0] # Handle nan, for shorter slices of diagonal paths
-            row_slice = ssdd_row[relevant_cols, :].transpose()
-            accumulated_cost_slice = self.dp_grade_slice(row_slice, p1, p2)
-            final_labels[row, relevant_cols] = self._backtrack_slice(accumulated_cost_slice, p1, p2)
+            row_slice = ssdd_row[relevant_cols, :].transpose()  # Shape: disparities x columns
+            slice_grades = self.dp_grade_slice(row_slice, p1, p2)
+            final_labels[row, relevant_cols] = self._backtrack_slice(slice_grades, p1, p2)
+            final_grades[row, relevant_cols, :] = slice_grades.transpose()  # Shape: columns x disparities
 
-        return final_labels  # includes -1 for irrelevant areas (caused from diagonal paths)
+        return final_labels, final_grades  # includes -1 for irrelevant areas (caused from diagonal paths)
+
+    def _dp_labeling_partial_rows_opposite(self,
+                                           ssdd_tensor: np.ndarray,
+                                           p1: float,
+                                           p2: float) -> tuple[np.ndarray, np.ndarray]:
+        # flip x before labeling and after, to receive slices in the opposite directions in the same indices
+        final_labels, final_grades = self._dp_labeling_partial_rows(ssdd_tensor[:, ::-1, :], p1, p2)
+        return final_labels[:, ::-1], final_grades[:, ::-1]
 
     @staticmethod
     def _backtrack_slice(accumulated_cost: np.ndarray, p1: float, p2: float) -> np.ndarray:
@@ -245,43 +269,35 @@ class Solution:
         num_rows, num_cols, num_disparities = ssdd_tensor.shape
 
         # Horizontally:
-        direction_to_slice[1] = self.dp_labeling(ssdd_tensor, p1, p2)
-        direction_to_slice[5] = self._dp_labeling_opposite(ssdd_tensor, p1, p2)
+        direction_to_slice[1], _ = self._dp_labeling_partial_rows(ssdd_tensor, p1, p2)
+        direction_to_slice[5], _ = self._dp_labeling_partial_rows_opposite(ssdd_tensor, p1, p2)
 
         # Vertically:
         # rotate to apply DP on columns:
         ssdd_tensor_rotated = np.rot90(ssdd_tensor)
-        vertical_labels_3 = self.dp_labeling(ssdd_tensor_rotated, p1, p2)
-        vertical_labels_7 = self._dp_labeling_opposite(ssdd_tensor_rotated, p1, p2)
+        vertical_labels_3, _ = self._dp_labeling_partial_rows(ssdd_tensor_rotated, p1, p2)
+        vertical_labels_7, _ = self._dp_labeling_partial_rows_opposite(ssdd_tensor_rotated, p1, p2)
         # rotate back to original dimensions
         direction_to_slice[3] = np.rot90(vertical_labels_3, 3)
         direction_to_slice[7] = np.rot90(vertical_labels_7, 3)
 
         # Diagonals 2 and 6:
         ssdd_tensor_diag2 = self.manipulate_ssdd_diagonally(ssdd_tensor)
-        diag2_labels = self.dp_labeling(ssdd_tensor_diag2, p1, p2)
-        diag6_labels = self._dp_labeling_opposite(ssdd_tensor_diag2, p1, p2)
+        diag2_labels, _ = self._dp_labeling_partial_rows(ssdd_tensor_diag2, p1, p2)
+        diag6_labels, _ = self._dp_labeling_partial_rows_opposite(ssdd_tensor_diag2, p1, p2)
         direction_to_slice[2] = self.inverse_diagonal(diag2_labels, num_rows, num_cols)
         direction_to_slice[6] = self.inverse_diagonal(diag6_labels, num_rows, num_cols)
 
         # Diagonals 4 and 8:
         # flip SSD tensor, to achieve diagonals from other side
         ssdd_tensor_diag4 = self.manipulate_ssdd_diagonally(ssdd_tensor[:, ::-1, :])
-        diag4_labels = self.dp_labeling(ssdd_tensor_diag4, p1, p2)
-        diag8_labels = self._dp_labeling_opposite(ssdd_tensor_diag4, p1, p2)
+        diag4_labels, _ = self._dp_labeling_partial_rows(ssdd_tensor_diag4, p1, p2)
+        diag8_labels, _ = self._dp_labeling_partial_rows_opposite(ssdd_tensor_diag4, p1, p2)
         # flip back to adapt to the original image indices
         direction_to_slice[4] = self.inverse_diagonal(diag4_labels, num_rows, num_cols)[:, ::-1]
         direction_to_slice[8] = self.inverse_diagonal(diag8_labels, num_rows, num_cols)[:, ::-1]
 
         return direction_to_slice
-
-    def _dp_labeling_opposite(self,
-                              ssdd_tensor: np.ndarray,
-                              p1: float,
-                              p2: float) -> np.ndarray:
-        # flip x before labeling and after, to receive slices in the opposite directions in the same indices
-        return self.dp_labeling(ssdd_tensor[:, ::-1, :], p1, p2)[:, ::-1]
-
 
     def sgm_labeling(self, ssdd_tensor: np.ndarray, p1: float, p2: float):
         """Estimate the depth map according to the SGM algorithm.
